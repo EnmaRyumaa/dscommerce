@@ -33,6 +33,8 @@ public class Role {
         this.authority = authority;
     }
 
+
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
