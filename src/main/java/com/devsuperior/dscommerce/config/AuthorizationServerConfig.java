@@ -1,13 +1,12 @@
 package com.devsuperior.dscommerce.config;
 
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.interfaces.RSAPrivateKey;
-import java.security.interfaces.RSAPublicKey;
-import java.time.Duration;
-import java.util.List;
-import java.util.UUID;
-
+import com.devsuperior.dscommerce.config.customgrant.CustomPasswordAuthenticationConverter;
+import com.devsuperior.dscommerce.config.customgrant.CustomPasswordAuthenticationProvider;
+import com.devsuperior.dscommerce.config.customgrant.CustomUserAuthorities;
+import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.jwk.RSAKey;
+import com.nimbusds.jose.jwk.source.JWKSource;
+import com.nimbusds.jose.proc.SecurityContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -36,21 +35,16 @@ import org.springframework.security.oauth2.server.authorization.settings.Authori
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.security.oauth2.server.authorization.settings.OAuth2TokenFormat;
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
-import org.springframework.security.oauth2.server.authorization.token.DelegatingOAuth2TokenGenerator;
-import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
-import org.springframework.security.oauth2.server.authorization.token.JwtGenerator;
-import org.springframework.security.oauth2.server.authorization.token.OAuth2AccessTokenGenerator;
-import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
-import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenGenerator;
+import org.springframework.security.oauth2.server.authorization.token.*;
 import org.springframework.security.web.SecurityFilterChain;
 
-import com.devsuperior.dscommerce.config.customgrant.CustomPasswordAuthenticationConverter;
-import com.devsuperior.dscommerce.config.customgrant.CustomPasswordAuthenticationProvider;
-import com.devsuperior.dscommerce.config.customgrant.CustomUserAuthorities;
-import com.nimbusds.jose.jwk.JWKSet;
-import com.nimbusds.jose.jwk.RSAKey;
-import com.nimbusds.jose.jwk.source.JWKSource;
-import com.nimbusds.jose.proc.SecurityContext;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
+import java.time.Duration;
+import java.util.List;
+import java.util.UUID;
 
 @Configuration
 public class AuthorizationServerConfig {
@@ -69,7 +63,7 @@ public class AuthorizationServerConfig {
 
 	@Bean
 	@Order(2)
-	public SecurityFilterChain asSecurityFilterChain(HttpSecurity http) throws Exception {
+	SecurityFilterChain asSecurityFilterChain(HttpSecurity http) throws Exception {
 
 		http.securityMatcher("oauth2/**", "/.well-known/**").with(OAuth2AuthorizationServerConfigurer.authorizationServer(), Customizer.withDefaults());
 
@@ -86,60 +80,60 @@ public class AuthorizationServerConfig {
 	}
 
 	@Bean
-	public OAuth2AuthorizationService authorizationService() {
+	OAuth2AuthorizationService authorizationService() {
 		return new InMemoryOAuth2AuthorizationService();
 	}
 
 	@Bean
-	public OAuth2AuthorizationConsentService oAuth2AuthorizationConsentService() {
+	OAuth2AuthorizationConsentService oAuth2AuthorizationConsentService() {
 		return new InMemoryOAuth2AuthorizationConsentService();
 	}
 
 	@Bean
-	public PasswordEncoder passwordEncoder() {
+	PasswordEncoder passwordEncoder() {
 		return new BCryptPasswordEncoder();
 	}
 
 	@Bean
-	public RegisteredClientRepository registeredClientRepository() {
+	RegisteredClientRepository registeredClientRepository() {
 		// @formatter:off
 		RegisteredClient registeredClient = RegisteredClient
-			.withId(UUID.randomUUID().toString())
-			.clientId(clientId)
-			.clientSecret(passwordEncoder().encode(clientSecret))
-			.scope("read")
-			.scope("write")
-			.authorizationGrantType(new AuthorizationGrantType("password"))
-			.tokenSettings(tokenSettings())
-			.clientSettings(clientSettings())
-			.build();
+				.withId(UUID.randomUUID().toString())
+				.clientId(clientId)
+				.clientSecret(passwordEncoder().encode(clientSecret))
+				.scope("read")
+				.scope("write")
+				.authorizationGrantType(new AuthorizationGrantType("password"))
+				.tokenSettings(tokenSettings())
+				.clientSettings(clientSettings())
+				.build();
 		// @formatter:on
 
 		return new InMemoryRegisteredClientRepository(registeredClient);
 	}
 
 	@Bean
-	public TokenSettings tokenSettings() {
+	TokenSettings tokenSettings() {
 		// @formatter:off
 		return TokenSettings.builder()
-			.accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED)
-			.accessTokenTimeToLive(Duration.ofSeconds(jwtDurationSeconds))
-			.build();
+				.accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED)
+				.accessTokenTimeToLive(Duration.ofSeconds(jwtDurationSeconds))
+				.build();
 		// @formatter:on
 	}
 
 	@Bean
-	public ClientSettings clientSettings() {
+	ClientSettings clientSettings() {
 		return ClientSettings.builder().build();
 	}
 
 	@Bean
-	public AuthorizationServerSettings authorizationServerSettings() {
+	AuthorizationServerSettings authorizationServerSettings() {
 		return AuthorizationServerSettings.builder().build();
 	}
 
 	@Bean
-	public OAuth2TokenGenerator<? extends OAuth2Token> tokenGenerator() {
+	OAuth2TokenGenerator<? extends OAuth2Token> tokenGenerator() {
 		NimbusJwtEncoder jwtEncoder = new NimbusJwtEncoder(jwkSource());
 		JwtGenerator jwtGenerator = new JwtGenerator(jwtEncoder);
 		jwtGenerator.setJwtCustomizer(tokenCustomizer());
@@ -148,7 +142,7 @@ public class AuthorizationServerConfig {
 	}
 
 	@Bean
-	public OAuth2TokenCustomizer<JwtEncodingContext> tokenCustomizer() {
+	OAuth2TokenCustomizer<JwtEncodingContext> tokenCustomizer() {
 		return context -> {
 			OAuth2ClientAuthenticationToken principal = context.getPrincipal();
 			CustomUserAuthorities user = (CustomUserAuthorities) principal.getDetails();
@@ -156,20 +150,20 @@ public class AuthorizationServerConfig {
 			if (context.getTokenType().getValue().equals("access_token")) {
 				// @formatter:off
 				context.getClaims()
-					.claim("authorities", authorities)
-					.claim("username", user.getUsername());
+						.claim("authorities", authorities)
+						.claim("username", user.getUsername());
 				// @formatter:on
 			}
 		};
 	}
 
 	@Bean
-	public JwtDecoder jwtDecoder(JWKSource<SecurityContext> jwkSource) {
+	JwtDecoder jwtDecoder(JWKSource<SecurityContext> jwkSource) {
 		return OAuth2AuthorizationServerConfiguration.jwtDecoder(jwkSource);
 	}
 
 	@Bean
-	public JWKSource<SecurityContext> jwkSource() {
+	JWKSource<SecurityContext> jwkSource() {
 		RSAKey rsaKey = generateRsa();
 		JWKSet jwkSet = new JWKSet(rsaKey);
 		return (jwkSelector, securityContext) -> jwkSelector.select(jwkSet);
