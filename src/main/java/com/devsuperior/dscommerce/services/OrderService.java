@@ -26,6 +26,9 @@ public class OrderService {
     private UserService userService;
 
     @Autowired
+    private AuthService authService;
+
+    @Autowired
     private ProductRepository productRepository;
 
     @Autowired
@@ -36,6 +39,7 @@ public class OrderService {
         Order order = repository.findById(id).orElseThrow(
                 () -> new ResourceNotFoundException("Recurso não encontrado!"));
 
+        authService.validateSelfOrAdmin(order.getClient().getId());
         return new OrderDTO(order);
 
     }
